@@ -1,3 +1,4 @@
+
 #%%timeit
 import requests
 #from functools import *
@@ -14,7 +15,11 @@ status_url = "/status"
 leaders_dic = {}
 cache = {}
 
-compiled = re.compile(r'<[^>]+>')
+# pattern1 and pattern2 are patterns to define
+pattern1 = r'<[^>]+>'
+pattern2 = r'\[.*?\]'
+compiled = re.compile("(%s|%s)" % (pattern1,pattern2))
+# starts a session
 session= requests.Session()
 
 #decorator for caching session
@@ -25,19 +30,21 @@ def hashable_cache(f):
         return cache[url]
     return inner
 
-
+# check_status check whether there is connection to API
 def check_status():
     request = session.get(f"{root_url}{status_url}")
     if request.status_code == 200:
         print(request.text)
     else:
         sys.exit(request.status_code)
-    
+
+# create_cookies(): create cookies that gives access to the API
 def create_cookies():
     cookies = session.get(f"{root_url}{cookie_url}")
     print(cookies.content)
     return cookies
- 
+
+# get_leader() function connect to the API to get the countries and leaders detail
 def get_leaders():
     check_status()
     cookies = create_cookies()
@@ -51,7 +58,7 @@ def get_leaders():
             cookies = create_cookies()
             leaders  = session.get(f"{root_url}{leaders_url}", cookies = cookies.cookies, params ={"country":country})
         leaders_dic[country] = leaders.json()
-    #create a Session object outside of the loop over countries.
+
     
     
     for country in leaders_dic:
@@ -63,7 +70,8 @@ def get_leaders():
     save(leaders_dic)        
     #return leaders_dic
     
-@hashable_cache         
+@hashable_cache
+# get_first_paragraph() gets the first paragraph of the leader and clean it
 def get_first_paragraph(wikipedia_url,session):
     print(wikipedia_url)
     leader_content = session.get(wikipedia_url).content
@@ -77,15 +85,14 @@ def get_first_paragraph(wikipedia_url,session):
     first_paragraph = compiled.sub('',string)       
     return first_paragraph
 
-
+# save the content to a json file leaders.json
 def save(leaders_per_country):
-    with open('leader.json', 'w') as fp:
+    with open('leaders.json', 'w') as fp:
         json.dump(leaders_per_country, fp)
         
-    with open('leader.json', 'r') as fp:
+    with open('leaders.json', 'r') as fp:
         leader_data = json.load(fp)
     print(leader_data)
     
-
 
 get_leaders()
